@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Public Message Board</title>
+
+<style>
+body {
+    font-family: Arial;
+    max-width: 600px;
+    margin: 20px auto;
+}
+#messages {
+    border: 1px solid #ccc;
+    padding: 10px;
+    height: 400px;
+    overflow-y: scroll;
+    background: #fafafa;
+}
+.msg {
+    border-bottom: 1px solid #eee;
+    padding: 6px;
+    margin-bottom: 5px;
+}
+.msg small {
+    display: block;
+    color: #777;
+}
+button {
+    padding: 5px 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Public Message Board</h2>
+
+<div id="messages">Loading...</div>
+
+<input id="msgInput" type="text" placeholder="Type your message..." style="width:70%">
+<button onclick="sendMsg()">Send</button>
+
+<script>
+// Create a unique delete key for user (stored locally)
+if (!localStorage.deleteKey) {
+    localStorage.deleteKey = Math.random().toString(36).substring(2);
+}
+
+async function loadMessages() {
+    const res = await fetch("messages.php?action=list");
+    const data = await res.json();
+
+    const box = document.getElementById("messages");
+    box.innerHTML = "";
+
+    data.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "msg";
+        div.innerHTML = `
+            <strong>${m.text}</strong>
+            <small>${m.time}</small>
+            ${m.key === localStorage.deleteKey 
+                ? `<button onclick="deleteMsg('${m.id}')">Delete</button>`
+                : ""}
+        `;
+        box.appendChild(div);
+    });
+
+    box.scrollTop = box.scrollHeight;
+}
+
+async function sendMsg() {
+    const text = document.getElementById("msgInput").value.trim();
+    if (!text) return;
+
+    await fetch("messages.php?action=send", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: `text=${encodeURIComponent(text)}&key=${localStorage.deleteKey}`
+    });
+
+    document.getElementById("msgInput").value = "";
+    loadMessages();
+}
+
+async function deleteMsg(id) {
+    await fetch("messages.php?action=delete", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: `id=${id}&key=${localStorage.deleteKey}`
+    });
+    loadMessages();
+}
+
+setInterval(loadMessages, 2000);
+loadMessages();
+</script>
+
+</body>
+</html>
